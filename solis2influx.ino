@@ -11,7 +11,7 @@
       -// (not true any longer..) } else if ((regvalue) == 8241) {        // RS485_MODBUS solis-rhi-3k-48es-5g
       - hardcoded the script to always run in ESVinv mode
    - removed influx
-   - added export to MQTT , could be disabkled via #define enable_mqtt 0
+   - added export to MQTT 
    - modified the WLAN-setup. but unhappy with my own changes. need to improve here...
    - added some more registers to read and commented some out
    - added relais-output to turn on/off heltec active balancer (work in progress)
@@ -67,13 +67,21 @@
    You should have received a copy of the GNU General Public License along
    with this program. If not, see <http://www.gnu.org/licenses/gpl-3.0.txt>.
 
+# further credits
+//taken mqtt_subscribe to read the Seplso values
+Karl Söderby https://docs.arduino.cc/tutorials/uno-wifi-rev2/uno-wifi-r2-mqtt-device-to-device
+
+//Reading Seplos BMS via RS485
+byte4geek https://github.com/byte4geek/SEPLOS_MQTT
+
+//parsing JSON (SEPLOS BMS)
+Liz Miller https://www.learnrobotics.org/blog/parse-json-data-arduino/
 */
 
 //most visible chrgraf changes
-#define enable_mqtt 1                            // enables publishing mqtt. set to zero if you want mqtt disabled
 #define enable_anti_oscillation_control_loop 0   // my solis is osciallation and having issues with its own control-loop. this function shoud give some enhancement to it
 #define oscillation_debug 0                      //oscillation-stuff is not even alpha. enabling this add more verbosity for debugging. (1_ enable, (0) disable)
-#define heltec_active_balancer 0                 // enables the capability to control the active-balancer via relais  
+#define heltec_active_balancer 1                 // enables the capability to control the active-balancer via relais  
 
 #define RETRY_ATTEMPTS 5                        // Number of retries to connect to WiFi and MQTT
 #define ACTIVE_BALANCER_RELAIS_PIN  23         // pin to control the relais for active-balancer
@@ -90,14 +98,12 @@
 #include <WiFi.h>
 #include <SoftwareSerial.h>
 #include <ModbusMaster.h>
-#if (enable_mqtt)
-   #include <ArduinoMqttClient.h>
-#endif
+#include <ArduinoMqttClient.h>
 
 //wlan
 const char* ssid_home = "TP-LINK-ganser24";
 const char* password_home = "mamaandpapa24";
-int retry_counter = 3;
+int retry_counter = 30;                                       //this sketch will not forever try to get wlan up... same for the mqtt-connect
 const int retry_interval_wlan = 500;
 
 //mqtt
@@ -106,6 +112,9 @@ MqttClient mqttClient(espClient);
 //IP Address for MQTT Broker here. Will work with local name however more reliable with static IP
 const char broker[] = "192.168.178.116"; //"core-mosquitto";
 int        port     = 1883; //your port here
+const char mqtt_user[] = "";
+const char mqtt_pw[] = "";
+
 int count = 0;
 const char mqtt_topic[] = "solis";
 
@@ -156,6 +165,7 @@ float timestamp_power_change=0;            // timestamp storing when last power-
 //hence this routine might mostly be very specific to my own environment
 float time_stamp_balance_went_on = 0;
 float cell_diff;
+const char subscribed_topic[]  = "seplos";
 
 
 enum solisdatatype {
@@ -284,14 +294,14 @@ const solisreg solisESINV[] = {
   { MB_INPUTREG,  33180,  0,     36000,   SDT_U16,   10,   "kWh",  "Yesterday_load_energy_consumption", false },
   { MB_INPUTREG,  33204,  0,     10,      SDT_U16,   1,     "",  "Charge_Direction", false },
   { MB_INPUTREG,  33263,  0,     -1,      SDT_S32,   1000, "KW",  "Meter_total_active_Power_Grid", false },
-  { MB_INPUTREG,  33285,  0,     120,     SDT_U32,   1000, "KW",  "Meter_total_active_energy_to_Grid", true },
+  { MB_INPUTREG,  33285,  0,     120,     SDT_U32,   1000, "KW",  "Meter_total_active_energy_to_Grid", false },
   { MB_INPUTREG,  33251,  0,     30,      SDT_U16,   10, "V",  "Meter_ac_voltage_A", false },
   { MB_INPUTREG,  33252,  0,     30,      SDT_U16,   100, "A",  "Meter_ac_current_A", false },
-  { MB_INPUTREG,  33253,  0,     30,      SDT_U16,   10, "V",  "Meter_ac_voltage_B", true },
+  { MB_INPUTREG,  33253,  0,     30,      SDT_U16,   10, "V",  "Meter_ac_voltage_B", false },
   { MB_INPUTREG,  33254,  0,     30,      SDT_U16,   100, "A",  "Meter_ac_current_B", false },
   { MB_INPUTREG,  33255,  0,     30,      SDT_U16,   10, "V",  "Meter_ac_voltage_C", false },
   { MB_INPUTREG,  33256,  0,     30,      SDT_U16,   100, "A",  "Meter_ac_current_C", false },
-  { MB_INPUTREG,  33263,  0,     5,      SDT_U32,   1, "W",  "Meter_total_active_power", true },
+  { MB_INPUTREG,  33263,  0,     5,      SDT_U32,   1, "W",  "Meter_total_active_power", false },
   { MB_HOLDINGREG,  43117,  0,   120,     SDT_U16,   10, "A",  "Battery_Charge_current_max", false },
   {}
 };
@@ -317,6 +327,40 @@ void ModbusPostTransmission() {
 }
 #endif
 
+
+/*
+turn on/off of the heltec active balancer
+ - subscribes to mqtt topic seplos (https://github.com/byte4geek/SEPLOS_MQTT)
+ - its a json format, 
+    -mosquitto_sub -t  seplos/#
+   {"lowest_cell":"Cell 15 - 3306 mV","lowest_cell_v":"3306","lowest_cell_n":"15","highest_cell":"Cell 9 - 3309 mV","highest_cell_v":"3309","highest_cell_n":"9","difference":"3","cell01":"3309","cell02":"3307","cell03":"3308","cell04":"3309","cell05":"3309","cell06":"3309","cell07":"3309","cell08":"3309","cell09":"3309","cell10":"3309","cell11":"3307","cell12":"3309","cell13":"3307","cell14":"3308","cell15":"3306","cell16":"3308","cell_temp1":"22.7","cell_temp2":"22.7","cell_temp3":"23.0","cell_temp4":"23.0","env_temp":"26.2","power_temp":"26.4","charge_discharge":"-18.95","total_voltage":"52.93","residual_capacity":"239.02","soc":"85.3","cycles":"10","soh":"100.0","port_voltage":"52.85"}
+   - start balancing if charging is active and min-max cell-diff > 10mv
+   - stop balancing after2h and if cell-diff < 10mv
+
+- functiononMqttMessage displays subscribed topic
+
+*/
+
+
+void onMqttMessage(int messageSize) {
+  String messageTemp;
+  // we received a message, print out the topic and contents
+  Serial.println("Received a message with topic '");
+  Serial.print(mqttClient.messageTopic());
+  Serial.print("', length ");
+  Serial.print(messageSize);
+  Serial.println(" bytes:");
+
+  // use the Stream interface to print the contents
+  while (mqttClient.available()) {
+    //Serial.print((char)mqttClient.read());
+    messageTemp += (char)mqttClient.read();
+    yield();
+  }
+
+  Serial.println(messageTemp);
+  
+}
 
 
 bool get_oscillation_regs () {
@@ -525,7 +569,12 @@ void setup_wifi(const int retry_interval, const char* nSSID = nullptr, const cha
         delay(retry_interval);
         Serial.print(".");
     }
-  Serial.println(" ");
+    Serial.println(" ");
+    Serial.print ("connected to wlan. ");
+    Serial.print ("IP address: ");
+    Serial.println(WiFi.localIP()); 
+    Serial.println("");
+      
 }
 
 
@@ -535,41 +584,44 @@ void connect_to_wlan() {
         Serial.println("trying to connect to wlan tp-link-ganser");
         setup_wifi (retry_interval_wlan,ssid_home,password_home);
       } 
-
-      Serial.print ("connected to wlan. ");
-      Serial.print ("IP address: ");
-      Serial.println(WiFi.localIP()); 
-      Serial.println("");
-      
 }
-
 
 void connect_mqtt () {
 //MQTT Connection here
   int i = 0;
-  // Each client must have a unique client ID
-   mqttClient.setId("SolisInv");
+  //if (!mqttClient.connect(broker, port)) {
+    if (!mqttClient.connected()) {
+      // Each client must have a unique client ID
+      mqttClient.setId("SolisInv");
+      // You can provide a username and password for authentication
+      mqttClient.setUsernamePassword(mqtt_user, mqtt_pw);      // user/pw
+      Serial.print("Attempting to connect to the MQTT broker: ");
+      Serial.println(broker);
+      while (!mqttClient.connect(broker, port) && i++ < retry_counter) {
+         delay(500);
+         Serial.print(".");
+      }
+      #if (heltec_active_balancer)
+        // set the message receive callback
+        mqttClient.onMessage(onMqttMessage);
+        Serial.print("Subscribing to topic: ");
+        Serial.println(subscribed_topic);
+        Serial.println();
+        // subscribe to a topic
+        mqttClient.subscribe(subscribed_topic);
+      #endif
+  //Serial.println("You're connected to the MQTT broker!");
+  //Serial.println();
 
-  // You can provide a username and password for authentication
-   mqttClient.setUsernamePassword("your user", "your password");
-
-  Serial.print("Attempting to connect to the MQTT broker: ");
-  Serial.println(broker);
-
-  while (!mqttClient.connect(broker, port) && i++ < retry_counter)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-
-
-  Serial.println("You're connected to the MQTT broker!");
-  Serial.println();
-
+}
 }
 
 
+
+
+
 void publish_mqtt (const char  *dataname, const char  *dataunit, const float regvalue, const bool debug) {
+
    //MQTT
     char topic[50];
     strcpy (topic, mqtt_topic);
@@ -613,6 +665,7 @@ void setup() {
 
   modbusSerial.begin(MODBUSBAUD);
   modbus.begin(MODBUSINVERTERID, modbusSerial);
+
 #ifdef MODBUSPINENATX
   pinMode(MODBUSPINENATX, OUTPUT);
   digitalWrite(MODBUSPINENATX, 0);
@@ -622,27 +675,36 @@ void setup() {
 
   Serial.println("solis2mqtt started");
 
-  connect_to_wlan();
-  mqttClient.setId("SolisInv");
-  connect_mqtt ();
+   connect_to_wlan();
+   connect_mqtt();
+   if (mqttClient.connected()) {
+      Serial.print ("connected successful MQTT: ");
+      Serial.print (broker);
+      Serial.print (":");
+      Serial.println (port);
+      }
+
+
 }
 
 void loop() {
+  /*
   Serial.println ("");
   Serial.println ("New Run");
   Serial.println ("#########");
   Serial.print("ESP Board MAC Address:  ");
   Serial.println(WiFi.macAddress());
-  
-  connect_to_wlan();
-  connect_mqtt ();
-  
-  
+  */
+
+  //connect_to_wlan();
+  connect_mqtt();
+
+  mqttClient.poll();
 
 #if (enable_anti_oscillation_control_loop) 
       // my solis overshhots when charging battery in low-light conditions.
       //draws to much resulting in requing power from grid
-      //then it stops charging and discharges.. this leads to oscialltion
+      //then it stops charging and discharges.. this leads to oscillation
       // below control-loop is trying to cover it
       //Serial.print ("+++++++++++++++++++++++++++++++++++++");
       //Serial.print (millis());
@@ -733,11 +795,13 @@ void loop() {
           if (solis[i].debug) Serial.print(regvalue);
           //influxdb.addField(solis[i].dataname, regvalue);
           publish_mqtt (solis[i].dataname, solis[i].dataunit, regvalue,solis[i].debug);
+         
         } else {
           unsigned int regvalue = modbus.getResponseBuffer(0);
           if (solis[i].debug) Serial.print(regvalue);
           //influxdb.addField(solis[i].dataname, regvalue);
-          publish_mqtt (solis[i].dataname, solis[i].dataunit, regvalue,solis[i].debug);
+           publish_mqtt (solis[i].dataname, solis[i].dataunit, regvalue,solis[i].debug);
+          
         }
         
         break;
@@ -748,6 +812,7 @@ void loop() {
           if (solis[i].debug) Serial.print(regvalue);
           //influxdb.addField(solis[i].dataname, regvalue);
           publish_mqtt (solis[i].dataname, solis[i].dataunit, regvalue,solis[i].debug);
+          
         } else {
           unsigned long regvalue = (unsigned long)(modbus.getResponseBuffer(0) << 16) | modbus.getResponseBuffer(1);
           if (solis[i].debug) Serial.print(regvalue);
@@ -877,10 +942,9 @@ void loop() {
     yield();
   
   }
-
-
   mqttClient.poll();
-  Serial.println("Now waiting 1secs");
-  delay(1000);
+
+  //Serial.println("Now waiting 1secs");
+  //delay(1000);
 }
 
