@@ -108,8 +108,8 @@ https://arduinojson.org/v6/assistant/#/step1
 #include <ArduinoMqttClient.h>
 
 //wlan
-const char* ssid_home = "TP-LINK-ganser24";
-const char* password_home = "mamaandpapa24";
+const char* ssid_home = "SSID";
+const char* password_home = "your-PW";
 int retry_counter = 30;                                       //this sketch will not forever try to get wlan up... same for the mqtt-connect
 const int retry_interval_wlan = 500;
 
