@@ -76,6 +76,13 @@ byte4geek https://github.com/byte4geek/SEPLOS_MQTT
 
 //parsing JSON (SEPLOS BMS)
 Liz Miller https://www.learnrobotics.org/blog/parse-json-data-arduino/
+
+//orgs
+excellent tool to get JSON parsed, required for this JSON formated Seplos query: Received a message with topic '
+seplos', length 696 bytes:
+{"lowest_cell":"Cell 11 - 3296 mV","lowest_cell_v":"3296","lowest_cell_n":"11","highest_cell":"Cell 16 - 3301 mV","highest_cell_v":"3301","highest_cell_n":"16","difference":"5","cell01":"3301","cell02":"3300","cell03":"3299","cell04":"3300","cell05":"3296","cell06":"3297","cell07":"3297","cell08":"3298","cell09":"3297","cell10":"3298","cell11":"3296","cell12":"3298","cell13":"3299","cell14":"3300","cell15":"3299","cell16":"3301","cell_temp1":"22.6","cell_temp2":"22.7","cell_temp3":"23.2","cell_temp4":"23.0","env_temp":"26.1","power_temp":"26.3","charge_discharge":"-15.33","total_voltage":"52.78","residual_capacity":"171.08","soc":"61.1","cycles":"11","soh":"100.0","port_voltage":"52.71"}
+
+https://arduinojson.org/v6/assistant/#/step1
 */
 
 //most visible chrgraf changes
