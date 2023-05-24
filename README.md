@@ -52,9 +52,9 @@ So using this sketch I am controlling a relais based on charging-state, voltage-
 
 The overall flow could be described as:
 - I am using github.com/byte4geek/SEPLOS_MQTT to read the Seplos BMS and publish it into MQTT
-- then I am using this sketch to subscribe to MQTT and derive 2 variables from it:
-... d
-... f
+- this sketch subscribes to MQTT and derive 2 variables from it:
+    - function: void parse_seplos_json_string (char *my_seplos_json_char)
+    - vars
 
 
 
