@@ -52,9 +52,28 @@ So using this sketch I am controlling a relais based on charging-state, voltage-
 
 The overall flow could be described as:
 - I am using github.com/byte4geek/SEPLOS_MQTT to read the Seplos BMS and publish it into MQTT
-- this sketch subscribes to MQTT and derive 2 variables from it:
+- this sketch subscribes to MQTT and derive 3 variables from it:
     - function: void parse_seplos_json_string (char *my_seplos_json_char)
-    - vars
+    - bms_measured_cell_diff = doc["difference"].as<float>();
+    - highest_cell_v = doc["highest_cell_v"].as<float>();
+    - charge_discharge = doc["charge_discharge"].as<float>();
+  
+**Control Loop Heltec**
+- turn on heltec balancer
+   - Cell with highest volatge must be larger as trigger_heltec_on
+   - and the the last charging-activity must be within the last max_balance_time_in_h_after_last_charge hours
+- In short, we did charge and one cell is high enough to enjoy balancing
+  
+- turn off the balancer
+  - the easy part is, to just turn it off if the difference between highest cell voltage and lowest cell voltage < trigger_heltec_off
+  - we have a hysteresis. trigger_heltec_off < trigger_heltec_on value
+  - if the charging time is more then max_balance_time_in_h_after_last_charge, heltec is turned off if we are below the initial balance-threshold (trigger_heltec_on)
+  
+Well, control-loop needs to be tested. Hence the code has the option to disable and and turn-on debug-info:
+- #define heltec_active_balancer 0 
+- #define debug_heltec_active_balancer 1
+                                                                                                                                     
+                                                                                                                                     
 
 
 
