@@ -9,7 +9,6 @@ This repo is a fork of his work
 - mostly done is the work to turn on/off my heltec balancer based on the date from the Seplos BMS.
 - project is getting bloated up by those further topics
 - I am feeling that the control-loop of the solis is not well done. Its quite to often oscillating by either drawing to much or to less power. And this over more then 15minutes. So I am working on adding some more control. This function is not even alpha. Best to keep this function off via #define enable_anti_oscillation_control_loop 0
-- The Seplos BMS is rather poor when it somes to balancing. So I decided to add a heltec active balancer. This one can be externally controlled if on or off. So I am adding a routine using a relais to turn on/off the balancer as required. State not even alpha, so best turn it off via #define heltec_active_balancer 0
 - made some minor changes with Serial.print outputs and added a debug-flag for the queried registers to be more verbose
 
 ## Preamble
