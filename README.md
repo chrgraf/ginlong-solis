@@ -4,7 +4,29 @@ First of all my greates thanks to the work of Hajo Noerenberg (https://github.co
 Excellent piece of Work - very clean, easy to extend and really works like a charm. Wish I could do the same...
 This repo is a fork of his work
 
-## Changes
+## added/modified files compared to master
+solis2influx.ino
+write_holding_register_43117.ino
+README,md
+
+
+## write_holding_register_43117.ino
+This a proof-of-concept sketch to see if I can write a holding-register of the Solis.
+its working.
+Sketch writes Register 43117, which enforces the Solis to limit how "strong" it can charge the battery.
+Mine cost-effective Solis oscillated sometime heavily - which results in jumping from:
+- sending to much power into grid
+- and consuming to much power from grid
+
+So I am looking if I could somehow improve it. Controlling how much the Solis is allowed to charge and discharge sound appealing, however those writes are all going into Solis EEPROM. And this has a limited lifetime with respect to writes.
+
+https://github.com/peufeu2/GrugBus is another idea of "faking" the energymeter. By providing "faked" energy-values one should be able to control the solis as well. I have not yet tried this approach, but sounds good as well.
+
+The solis2influx.ino has some code to write 43117 register, but it is (and should) be turned off:  
+(#define enable_anti_oscillation_control_loop 0)
+
+
+## Changes in solis2influx.ino
 - main-goal was to add MQTT-capabilities. This part is solved. Any read register gets published via MQTT
 - mostly done is the work to turn on/off my heltec balancer based on the date from the Seplos BMS.
 - project is getting bloated up by those further topics
