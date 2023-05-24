@@ -22,6 +22,7 @@ And I am using MAX3485, which is 3.3V to make sure not destroying the ESP. Feedb
 ## MQTT Changes
 Hajos Original was nicely reading the Solis via RS485. With mine changes, those values are now beeing published via MQTT:
 
+```
 pi@rpi4:~ $ mosquitto_sub -t  solis/#
 Battery_current A=11.500
 Battery_voltage V=54.500
@@ -29,12 +30,15 @@ Battery_voltage V=54.500
 If you want to debug any register (including the MQTT stuff), then chnage the false-keywird to true
 
   { MB_INPUTREG,  33133,  0,     10,      SDT_U16,   10,     "V",  "Battery_voltage", false },
+```
+
+After enabling debugging, serial-console is more verbose:
   
-  After enabling debugging, serial-console is more verbose:
-  
+```
 reading register :33133 Battery_voltage = 54.50
 MQTT: Sending message to topic: solis/Battery_voltage_V
 Value: Battery_voltage V=54.500
+```
 
 Not sure if it was a good idea to have 
 a) for each register an own topic
@@ -98,8 +102,8 @@ Karl Söderby https://docs.arduino.cc/tutorials/uno-wifi-rev2/uno-wifi-r2-mqtt-d
 //Reading Seplos BMS via RS485
 byte4geek https://github.com/byte4geek/SEPLOS_MQTT
 
-//parsing JSON (SEPLOS BMS)
-Liz Miller https://www.learnrobotics.org/blog/parse-json-data-arduino/
+//excellent example on how to parse JSON
+https://arduinojson.org/v6/example/parser/
 
 //Solis register xls. very complete, including writable holding-regs
 [peufeu2] https://github.com/peufeu2/GrugBus
