@@ -5,9 +5,9 @@ Excellent piece of Work - very clean, easy to extend and really works like a cha
 This repo is a fork of his work
 
 ## added/modified files compared to master
-solis2influx.ino
-write_holding_register_43117.ino
-README,md
+- solis2influx.ino
+- write_holding_register_43117.ino
+- README,md
 
 
 ## write_holding_register_43117.ino
