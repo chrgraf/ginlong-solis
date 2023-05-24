@@ -28,7 +28,7 @@ The solis2influx.ino has some code to write 43117 register, but it is (and shoul
 
 ## Changes in solis2influx.ino
 - main-goal was to add MQTT-capabilities. This part is solved. Any read register gets published via MQTT
-- mostly done is the work to turn on/off my heltec balancer based on the date from the Seplos BMS.
+- mostly done is the work to turn on/off my heltec balancer based on the date from the Seplos BMS. Testing of the code and the efeectiveness of the Heltec Balancer is going to happen over the next days.  
 - project is getting bloated up by those further topics
 - I am feeling that the control-loop of the solis is not well done. Its quite to often oscillating by either drawing to much or to less power. And this over more then 15minutes. So I am working on adding some more control. This function is not even alpha. Best to keep this function off via #define enable_anti_oscillation_control_loop 0
 - made some minor changes with Serial.print outputs and added a debug-flag for the queried registers to be more verbose
@@ -99,9 +99,6 @@ Well, control-loop needs to be tested. Hence the code has the option to disable 
 - #define debug_heltec_active_balancer 1
                                                                                                                                      
                                                                                                                                      
-
-
-
 
 ## Some words to mine overall environment
 - SMA PV Inverters with old/rev1 Sunny-Home-Manager. Using  https://www.unifox.at/software/sma-em-daemon/ to get it into MQTT
